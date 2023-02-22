@@ -20,17 +20,25 @@ extension Snapshotting where Value == UIView, Format == UIImage {
     precision: Float = 1,
     perceptualPrecision: Float = 1,
     size: CGSize? = nil,
-    traits: UITraitCollection = .init()
+    traits: UITraitCollection = .init(),
+    configure: ((Value) -> Void)? = nil
     )
     -> Snapshotting {
 
       return SimplySnapshotting.image(precision: precision, perceptualPrecision: perceptualPrecision, scale: traits.displayScale).asyncPullback { view in
-        snapshotView(
+
+        var viewController: UIViewController?
+        if let window = view as? UIWindow {
+          viewController = window.rootViewController
+        }
+
+        return snapshotView(
           config: .init(safeArea: .zero, size: size ?? view.frame.size, traits: .init()),
           drawHierarchyInKeyWindow: drawHierarchyInKeyWindow,
           traits: traits,
           view: view,
-          viewController: .init()
+          viewController: viewController ?? .init(),
+          configure: configure
         )
       }
   }

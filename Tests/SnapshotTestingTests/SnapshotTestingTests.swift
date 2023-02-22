@@ -853,6 +853,56 @@ final class SnapshotTestingTests: XCTestCase {
     assertSnapshot(matching: view, as: .recursiveDescription)
     #endif
   }
+  
+  // Unable to snapshot window since no test host application
+//  func testUIWindow() {
+//    let rootViewController = UIViewController()
+//    rootViewController.view.backgroundColor = .red
+//
+//    let window = UIWindow()
+//    window.makeKeyAndVisible()
+//    window.rootViewController = rootViewController
+//
+//    let viewController = UIViewController()
+//    viewController.view.backgroundColor = .green
+//
+//    let expectation = self.expectation(description: #function)
+//    rootViewController.present(viewController, animated: false, completion: {
+//      expectation.fulfill()
+//    })
+//
+//    wait(for: [expectation], timeout: 1)
+//    assertSnapshot(matching: window, as: .image(drawHierarchyInKeyWindow: true))
+//  }
+  
+  func testUIViewControllerImage() {
+    #if os(iOS)
+    class MyViewController : UIViewController {
+      
+      let button: UIButton = {
+        let button = UIButton()
+        button.setTitle("Click me", for: .normal)
+        button.sizeToFit()
+        return button
+      }()
+      
+      override func viewDidLoad() {
+        super.viewDidLoad()
+        view.addSubview(button)
+        button.frame = CGRect(x: 20, y: 20, width: 200, height: 40)
+      }
+      
+      func buttonTapped() {
+        view.backgroundColor = .red
+      }
+    }
+    
+    let viewController = MyViewController()
+    assertSnapshot(matching: viewController, as: .image(configure: {
+      $0.buttonTapped()
+    }))
+    #endif
+  }
 
   func testUIViewControllerLifeCycle() {
     #if os(iOS)

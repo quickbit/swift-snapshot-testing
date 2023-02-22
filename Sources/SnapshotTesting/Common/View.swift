@@ -914,13 +914,15 @@ func prepareView(
   ) -> () -> Void {
   let size = config.size ?? viewController.view.frame.size
   view.frame.size = size
-  if view != viewController.view {
+  if !(view is UIWindow) && view != viewController.view {
     viewController.view.bounds = view.bounds
     viewController.view.addSubview(view)
   }
   let traits = UITraitCollection(traitsFrom: [config.traits, traits])
   let window: UIWindow
-  if drawHierarchyInKeyWindow {
+  if let windowFromView = view as? UIWindow {
+    window = windowFromView
+  } else if drawHierarchyInKeyWindow {
     guard let keyWindow = getKeyWindow() else {
       fatalError("'drawHierarchyInKeyWindow' requires tests to be run in a host application")
     }
@@ -944,12 +946,13 @@ func prepareView(
   return dispose
 }
 
-func snapshotView(
+func snapshotView<T>(
   config: ViewImageConfig,
   drawHierarchyInKeyWindow: Bool,
   traits: UITraitCollection,
   view: UIView,
-  viewController: UIViewController
+  viewController: UIViewController,
+  configure: ((T) -> Void)?
   )
   -> Async<UIImage> {
     let initialFrame = view.frame
@@ -960,6 +963,15 @@ func snapshotView(
       view: view,
       viewController: viewController
     )
+    
+    if let t = view as? T {
+      configure?(t)
+    }
+    else if let t = viewController as? T {
+      configure?(t)
+    }
+    
+    
     // NB: Avoid safe area influence.
     if config.safeArea == .zero { view.frame.origin = .init(x: offscreen, y: offscreen) }
 
@@ -1014,13 +1026,14 @@ private func add(traits: UITraitCollection, viewController: UIViewController, to
       ])
     }
     rootViewController.addChild(viewController)
+    
+    rootViewController.setOverrideTraitCollection(traits, forChild: viewController)
+    viewController.didMove(toParent: rootViewController)
+    
+    window.rootViewController = rootViewController
   } else {
     rootViewController = viewController
   }
-  rootViewController.setOverrideTraitCollection(traits, forChild: viewController)
-  viewController.didMove(toParent: rootViewController)
-
-  window.rootViewController = rootViewController
 
   rootViewController.beginAppearanceTransition(true, animated: false)
   rootViewController.endAppearanceTransition()
@@ -1038,7 +1051,9 @@ private func add(traits: UITraitCollection, viewController: UIViewController, to
     viewController.removeFromParent()
     viewController.didMove(toParent: nil)
     rootViewController.endAppearanceTransition()
-    window.rootViewController = nil
+    if viewController != window.rootViewController {
+      window.rootViewController = nil
+    }
   }
 }
 
